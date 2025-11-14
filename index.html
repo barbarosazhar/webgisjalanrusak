@@ -46,8 +46,8 @@
         <script src="js/tailDT.js"></script>
         <link rel="stylesheet" href="https://daniellsu.github.io/leaflet-betterscale/L.Control.BetterScale.css"/>
         <script src="https://daniellsu.github.io/leaflet-betterscale/L.Control.BetterScale.js"></script>
-<script src="js/nouislider.min.js"></script>
-<script src="js/wNumb.js"></script>
+        <script src="js/nouislider.min.js"></script>
+        <script src="js/wNumb.js"></script>
         <script src="data/TitikKerusakanJalan_3.js"></script>
         <script>
         var highlightLayer;
@@ -90,17 +90,17 @@
         //Add scale with var options={metric:true}
         var scale = L.control.betterscale({metric:true,imperial:false}).addTo(map)
 
-        //Add compass
-        var north = L.control({
-          opacity:0,
-          position:"bottomright"
-        });
-        north.onAdd = function(map){
-          var div = L.DomUtil.create("div","info legend");
-          div.innerHTML='<img src="images/compass.png" width="45">';
-          return div;
-          }
-        north.addTo(map);
+        // //Add compass
+        // var north = L.control({
+        //   opacity:0,
+        //   position:"bottomright"
+        // });
+        // north.onAdd = function(map){
+        //   var div = L.DomUtil.create("div","info legend");
+        //   div.innerHTML='<img src="images/compass.png" width="45">';
+        //   return div;
+        //   }
+        // north.addTo(map);
 
         // add class to format popup if it contains media
 		function addClassToPopupIfMedia(content, popup) {
@@ -191,6 +191,14 @@
                 },
                 mouseover: highlightFeature,
             });
+            // build safe image HTML for popup
+            var imgHtml = '';
+            var imgProp = feature.properties['Dokumentasi_Kerusakan_Jalan'];
+            if (imgProp !== null && imgProp !== undefined && String(imgProp).trim() !== '') {
+                // get filename only (strip any path), then encode to make a safe URL
+                var filename = String(imgProp).split(/[\\/]/).pop().trim();
+                imgHtml = '<img src="images/' + encodeURIComponent(filename) + '" style="max-width:250px;max-height:200px;display:block;">';
+            }
             var popupContent = '<table>\
                     <tr>\
                         <th scope="row">Timestamp</th>\
@@ -218,7 +226,7 @@
                     </tr>\
                     <tr>\
                         <th scope="row">Dokumentasi_Kerusakan_Jalan</th>\
-                        <td class="visible-with-data" id="Dokumentasi_Kerusakan_Jalan">' + (feature.properties['Dokumentasi_Kerusakan_Jalan'] !== null ? '<img src="images/' + String(feature.properties['Dokumentasi_Kerusakan_Jalan']).replace(/[\\/:]/g, '_').trim().replace(/'/g, '\'').replace(/"/g, '&quot;') + '">' : '') + '</td>\
+                        <td class="visible-with-data" id="Dokumentasi_Kerusakan_Jalan">' + imgHtml + '</td>\
                     </tr>\
                 </table>';
             var content = removeEmptyRowsFromPopupContent(popupContent, feature);
@@ -331,6 +339,18 @@
         document.getElementById("all").appendChild(col1);
         document.getElementById("all").appendChild(col2);
         col1.appendChild(mapDiv)
+        // Fix shaky map: force Leaflet to recalc size after DOM move, then re-fit bounds
+        setTimeout(function() {
+            if (map && typeof map.invalidateSize === 'function') {
+                map.invalidateSize();
+                map.fitBounds([[-2.1544686141569516,115.37721551829694],[-2.1435672853948917,115.42201173480657]]);
+            }
+        }, 200);
+        // Add text to the white right-hand menu
+       col2.innerHTML = '<div style="padding:12px;font-family:Arial, sans-serif;color:#222">\
+           <h3>Peta Kerusakan Jalan</h3>\
+            <p style="text-align: justify;">Peta ini menampilkan titik-titik kerusakan jalan di wilayah Tanjung Field. Setiap titik menunjukkan lokasi kerusakan jalan beserta informasi terkait seperti skala prioritas, alasan urgensi, kebutuhan alat berat, dan dokumentasi foto kerusakan.</p>\
+         </div>';
         var Filters = {"Skala_Prioritas": "int"};
         function filterFunc() {
           map.eachLayer(function(lyr){
