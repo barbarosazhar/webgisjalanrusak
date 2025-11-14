@@ -173,6 +173,55 @@
         });
         layer_OpenStreetMap_2;
         map.addLayer(layer_OpenStreetMap_2);
+        // Better Drive URL normalizer (handles /d/..., ?id=..., /open?id=..., uc links, direct lh3 links)
+        function getDriveDirectUrl(link) {
+            if (!link) return null;
+            var s = String(link).trim();
+            // If it's already a direct-ish url to an image host, return as-is
+            if (s.match(/^https?:\/\/(lh3\.googleusercontent\.com|drive\.googleusercontent\.com|docs\.googleusercontent\.com)\//i)) {
+                return s;
+            }
+            // Extract file id from common Drive patterns
+            var m = s.match(/\/d\/([a-zA-Z0-9_-]{10,})/) || s.match(/[?&]id=([a-zA-Z0-9_-]{10,})/) || s.match(/open\?id=([a-zA-Z0-9_-]{10,})/);
+            if (m && m[1]) {
+                return 'https://drive.google.com/uc?export=view&id=' + m[1];
+            }
+            // If link already contains uc?export=, return it
+            if (s.indexOf('drive.google.com/uc?') !== -1 || s.indexOf('drive.google.com/thumbnail') !== -1) {
+                return s;
+            }
+            // last-resort: return original; caller will show fallback link
+            return s;
+        }
+
+        function createPopupImageElement(url, popup) {
+            if (!url) return null;
+            var img = document.createElement('img');
+            img.alt = 'photo';
+            img.title = url;
+            img.style.maxWidth = '250px';
+            img.style.maxHeight = '200px';
+            img.style.display = 'block';
+            img.style.border = '1px solid #ccc';
+            // Do NOT force crossOrigin for Drive (can cause CORS failures)
+            img.src = url;
+            img.onload = function() {
+                try { if (popup && typeof popup.update === 'function') popup.update(); } catch(e){}
+            };
+            img.onerror = function() {
+                console.warn('Popup image failed to load (img.onerror):', url);
+                img.style.display = 'none';
+                // show a small error note (keeps the rest of the popup intact)
+                var note = document.createElement('div');
+                note.style.color = '#a00';
+                note.style.fontSize = '12px';
+                note.textContent = 'Image could not be embedded. Use the link below to open it.';
+                if (img.parentNode) img.parentNode.appendChild(note);
+                try { if (popup && typeof popup.update === 'function') popup.update(); } catch(e){}
+            };
+            return img;
+        }
+
         function pop_TitikKerusakanJalan_3(feature, layer) {
             layer.on({
                 mouseout: function(e) {
@@ -191,14 +240,8 @@
                 },
                 mouseover: highlightFeature,
             });
-            // build safe image HTML for popup
-            var imgHtml = '';
-            var imgProp = feature.properties['Dokumentasi_Kerusakan_Jalan'];
-            if (imgProp !== null && imgProp !== undefined && String(imgProp).trim() !== '') {
-                // get filename only (strip any path), then encode to make a safe URL
-                var filename = String(imgProp).split(/[\\/]/).pop().trim();
-                imgHtml = '<img src="images/' + encodeURIComponent(filename) + '" style="max-width:250px;max-height:200px;display:block;">';
-            }
+
+            // build popup HTML with a placeholder cell for the image (do NOT put raw <img> here)
             var popupContent = '<table>\
                     <tr>\
                         <th scope="row">Timestamp</th>\
@@ -226,14 +269,44 @@
                     </tr>\
                     <tr>\
                         <th scope="row">Dokumentasi_Kerusakan_Jalan</th>\
-                        <td class="visible-with-data" id="Dokumentasi_Kerusakan_Jalan">' + imgHtml + '</td>\
+                        <td class="visible-with-data" id="Dokumentasi_Kerusakan_Jalan">[image]</td>\
                     </tr>\
                 </table>';
-            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
-			layer.on('popupopen', function(e) {
-				addClassToPopupIfMedia(content, e.popup);
-			});
-			layer.bindPopup(content, { maxHeight: 400 });
+
+            // bind popup (other rows remain in the HTML)
+            layer.bindPopup(popupContent, { maxHeight: 400 });
+
+            // on popup open, replace only the image cell content safely
+            layer.on('popupopen', function(e) {
+                var popup = e.popup;
+                var td = popup._contentNode && popup._contentNode.querySelector && popup._contentNode.querySelector('td#Dokumentasi_Kerusakan_Jalan');
+                if (td) {
+                    td.innerHTML = '';
+                    var raw = feature.properties['Dokumentasi_Kerusakan_Jalan'];
+                    console.log('popup image raw property:', raw);
+                    if (raw !== null && raw !== undefined && String(raw).trim() !== '') {
+                        var url = getDriveDirectUrl(raw);
+                        console.log('resolved image url:', url);
+                        var imgEl = createPopupImageElement(url, popup);
+                        if (imgEl) {
+                            td.appendChild(imgEl);
+                        }
+                        // always add a visible fallback link (so you can open image directly)
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.target = '_blank';
+                        a.rel = 'noopener';
+                        a.style.display = 'block';
+                        a.style.marginTop = '6px';
+                        a.textContent = 'Open image in new tab';
+                        td.appendChild(a);
+                        setTimeout(function(){ try{ popup.update(); }catch(err){} }, 80);
+                    } else {
+                        td.textContent = 'No image';
+                    }
+                }
+                addClassToPopupIfMedia(popup.getContent ? popup.getContent() : popup._contentNode.innerHTML, popup);
+            });
         }
 
         function style_TitikKerusakanJalan_3_0() {
