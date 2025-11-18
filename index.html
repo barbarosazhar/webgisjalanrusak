@@ -56,6 +56,255 @@ var sheetsData = []; // Store fetched data
 var json_Form_Pengaduan_Jalan_Rusak_3 = { type: 'FeatureCollection', features: [] }; // Initialize empty GeoJSON
 var map; // Declare map globally
 
+// ============================================
+// COORDINATE VALIDATION AND REVERSE GEOCODING
+// ============================================
+
+/**
+ * Validates if a coordinate value is coherent (within valid ranges)
+ * @param {number} lat - Latitude value
+ * @param {number} lon - Longitude value
+ * @returns {boolean} - True if coordinates are valid
+ */
+function isValidCoordinate(lat, lon) {
+    // Check if values are numbers and within valid ranges
+    // Latitude: -90 to 90, Longitude: -180 to 180
+    if (isNaN(lat) || isNaN(lon)) return false;
+    if (lat < -90 || lat > 90) return false;
+    if (lon < -180 || lon > 180) return false;
+    // Additional check: coordinates should not be exactly 0,0 unless intentional
+    if (lat === 0 && lon === 0) return false;
+    return true;
+}
+
+/**
+ * Performs reverse geocoding using OpenStreetMap Nominatim API
+ * Gets the location name (Koordinat Jalan Rusak) from latitude/longitude
+ * @param {number} lat - Latitude coordinate
+ * @param {number} lon - Longitude coordinate
+ * @returns {Promise<string>} - Returns location address/name
+ */
+function reverseGeocode(lat, lon) {
+    return new Promise((resolve, reject) => {
+        const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
+        
+        fetch(nominatimUrl, {
+            headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'qgis2web-app'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Extract the most appropriate address components
+            const address = data.address || {};
+            let locationName = data.name || '';
+            
+            // Build a detailed address from available components
+            const addressParts = [];
+            
+            // Priority order for building the address
+            if (address.road) addressParts.push(address.road);
+            if (address.village) addressParts.push(address.village);
+            if (address.town) addressParts.push(address.town);
+            if (address.city) addressParts.push(address.city);
+            if (address.county) addressParts.push(address.county);
+            if (address.state) addressParts.push(address.state);
+            
+            locationName = addressParts.length > 0 
+                ? addressParts.join(', ') 
+                : `Lat: ${lat.toFixed(6)}, Lon: ${lon.toFixed(6)}`;
+            
+            console.log(`Reverse geocoded: ${locationName}`);
+            resolve(locationName);
+        })
+        .catch(error => {
+            console.error('Reverse geocoding error:', error);
+            // Fallback to coordinates if API fails
+            resolve(`Lat: ${lat.toFixed(6)}, Lon: ${lon.toFixed(6)}`);
+        });
+    });
+}
+
+/**
+ * Converts Degree Minute Second (DMS) format to Decimal Degree
+ * Supports formats like: 115°25'23.5", 115 25 23.5, 115°25'23.5"E, etc.
+ * @param {string} dmsString - DMS coordinate string
+ * @returns {number|null} - Decimal degree or null if invalid
+ */
+function convertDMSToDecimal(dmsString) {
+    if (!dmsString || typeof dmsString !== 'string') return null;
+    
+    dmsString = dmsString.trim();
+    
+    // Extract cardinal direction (E, W, N, S)
+    const cardinalMatch = dmsString.match(/[EWNS]/i);
+    const cardinal = cardinalMatch ? cardinalMatch[0].toUpperCase() : null;
+    
+    // Remove cardinal direction and common separators
+    let cleaned = dmsString.replace(/[EWNS°'"]/gi, ' ').trim();
+    
+    // Extract numbers (handles various separators: space, comma, etc.)
+    const numbers = cleaned.match(/-?\d+\.?\d*/g);
+    
+    if (!numbers || numbers.length < 1) return null;
+    
+    let degrees = parseFloat(numbers[0]);
+    let minutes = numbers.length > 1 ? parseFloat(numbers[1]) : 0;
+    let seconds = numbers.length > 2 ? parseFloat(numbers[2]) : 0;
+    
+    // Validate ranges
+    if (minutes < 0 || minutes >= 60 || seconds < 0 || seconds >= 60) {
+        return null;
+    }
+    
+    // Calculate decimal degree
+    let decimal = degrees + (minutes / 60) + (seconds / 3600);
+    
+    // Apply cardinal direction sign
+    if (cardinal === 'S' || cardinal === 'W') {
+        decimal = -Math.abs(decimal);
+    } else if (cardinal === 'N' || cardinal === 'E') {
+        decimal = Math.abs(decimal);
+    }
+    
+    return decimal;
+}
+
+/**
+ * Handles coordinate parsing with support for both decimal and DMS formats
+ * Applies cardinal direction (E/W for longitude, N/S for latitude)
+ * @param {string} coordString - Coordinate string
+ * @param {string} type - Either 'longitude' or 'latitude'
+ * @returns {number|null} - Decimal degree or null if invalid
+ */
+function parseCoordinate(coordString, type) {
+    if (!coordString || typeof coordString !== 'string') return null;
+    
+    coordString = coordString.trim();
+    
+    // Try to convert DMS to decimal first
+    let decimal = convertDMSToDecimal(coordString);
+    
+    // If DMS conversion failed, try parsing as simple decimal
+    if (decimal === null) {
+        decimal = parseFloat(coordString);
+        if (isNaN(decimal)) return null;
+    }
+    
+    // Apply cardinal direction logic if not already applied
+    if (decimal !== null) {
+        const cardinalMatch = coordString.match(/[EWNS]/i);
+        if (cardinalMatch) {
+            const cardinal = cardinalMatch[0].toUpperCase();
+            if (cardinal === 'S' || cardinal === 'W') {
+                decimal = -Math.abs(decimal);
+            } else if (cardinal === 'N' || cardinal === 'E') {
+                decimal = Math.abs(decimal);
+            }
+        }
+    }
+    
+    return decimal;
+}
+
+/**
+ * Updated: Extracts valid coordinates from row data with DMS support
+ * @param {Object} row - Data row from Google Sheets
+ * @returns {Object|null} - {lat, lon} or null
+ */
+function extractValidCoordinates(row) {
+    const lonString = row['Koordinat X (Longitude)'];
+    const latString = row['Koordinat Y (Latitude)'];
+    
+    const lon = parseCoordinate(lonString, 'longitude');
+    const lat = parseCoordinate(latString, 'latitude');
+    
+    if (lon !== null && lat !== null && isValidCoordinate(lat, lon)) {
+        return { lat: lat, lon: lon };
+    }
+    return null;
+}
+
+/**
+ * Attempts to extract coordinates from "Koordinat Jalan Rusak" field
+ * Supports various formats: "lat,lon" or "lon,lat"
+ * @param {string} koordinatText - Text containing coordinates
+ * @returns {Object|null} - {lat, lon} or null
+ */
+function parseKordinatJalanRusakField(koordinatText) {
+    if (!koordinatText || typeof koordinatText !== 'string') return null;
+    
+    // Remove common separators and whitespace
+    koordinatText = koordinatText.trim();
+    
+    // Try to extract numbers (handles formats like "1.23, 4.56" or "1.23,4.56")
+    const numberPattern = /-?\d+\.?\d*/g;
+    const numbers = koordinatText.match(numberPattern);
+    
+    if (!numbers || numbers.length < 2) return null;
+    
+    const num1 = parseFloat(numbers[0]);
+    const num2 = parseFloat(numbers[1]);
+    
+    // Determine which is latitude and which is longitude
+    // Longitude typically larger absolute values for this region, or check ranges
+    let lat, lon;
+    
+    // Check if first number looks like longitude and second like latitude (for this region)
+    if (Math.abs(num1) > 10 && Math.abs(num2) < 10) {
+        lon = num1;
+        lat = num2;
+    } else {
+        lat = num1;
+        lon = num2;
+    }
+    
+    if (isValidCoordinate(lat, lon)) {
+        return { lat: lat, lon: lon };
+    }
+    
+    return null;
+}
+
+/**
+ * Gets location name with fallback to reverse geocoding
+ * Caches results to avoid excessive API calls
+ * @param {Object} row - Data row from Google Sheets
+ * @returns {Promise<string>} - Location name/address
+ */
+const locationCache = {}; // Cache for reverse geocoding results
+
+async function getLocationName(row) {
+    // First, try to get valid coordinates from primary fields
+    let coords = extractValidCoordinates(row);
+    
+    // If primary coordinates are invalid, try to parse "Koordinat Jalan Rusak" field
+    if (!coords && row['Koordinat Jalan Rusak']) {
+        coords = parseKordinatJalanRusakField(row['Koordinat Jalan Rusak']);
+    }
+    
+    // If we have valid coordinates, perform reverse geocoding
+    if (coords) {
+        const cacheKey = `${coords.lat.toFixed(4)}_${coords.lon.toFixed(4)}`;
+        
+        if (locationCache[cacheKey]) {
+            return locationCache[cacheKey];
+        }
+        
+        const locationName = await reverseGeocode(coords.lat, coords.lon);
+        locationCache[cacheKey] = locationName;
+        return locationName;
+    }
+    
+    // Fallback if no coordinates found
+    return 'Koordinat tidak tersedia';
+}
+
+// ============================================
+// END
+// ============================================
+
 // Fetch Google Sheets data using Papa Parse
 function init() {
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQAcHzBsovW-FFQpcikrjdg9RNxDKaE3MTB0CkBgJVsj6aYzMuExNJB77sRIDKztKVPRtE1MoidxVX-/pub?output=csv';
@@ -70,31 +319,58 @@ function init() {
     });
 }
 
-// Process fetched data and convert to GeoJSON
-function myFunction(results) {
+// Process fetched data and convert to GeoJSON with coordinate validation
+async function myFunction(results) {
     console.log('Fetched data:', results.data);
-    sheetsData = results.data.filter(row => row['Koordinat X (Longitude)']); // Filter empty rows
+    sheetsData = results.data.filter(row => {
+        // Include rows that have either primary coordinates or can be parsed
+        const hasValidCoords = extractValidCoordinates(row);
+        const hasKordinatField = row['Koordinat Jalan Rusak'];
+        return hasValidCoords || hasKordinatField;
+    });
     
-    // Convert sheet data to GeoJSON format
-    json_Form_Pengaduan_Jalan_Rusak_3.features = sheetsData.map(row => ({
-        type: 'Feature',
-        geometry: {
-            type: 'Point',
-            coordinates: [
-                parseFloat(row['Koordinat X (Longitude)']) || 0,
-                parseFloat(row['Koordinat Y (Latitude)']) || 0
-            ]
-        },
-        properties: {
-            'Submission Date': row['Submission Date'] || '',
-            'Skala Prioritas': row['Skala Prioritas'] || '',
-            'Alasan Urgensi': row['Alasan Urgensi'] || '',
-            'Kebutuhan Alat Berat': row['Kebutuhan Alat Berat'] || '',
-            'Koordinat X (Longitude)': row['Koordinat X (Longitude)'] || '',
-            'Koordinat Y (Latitude)': row['Koordinat Y (Latitude)'] || '',
-            'Dokumentasi Jalan Rusak': row['Dokumentasi Jalan Rusak'] || ''
+    // Convert sheet data to GeoJSON format with coordinate validation
+    const features = [];
+    
+    for (const row of sheetsData) {
+        let coords = extractValidCoordinates(row);
+        let locationName = '';
+        
+        // If primary coordinates are invalid, try to parse them
+        if (!coords && row['Koordinat Jalan Rusak']) {
+            coords = parseKordinatJalanRusakField(row['Koordinat Jalan Rusak']);
         }
-    }));
+        
+        // If we found valid coordinates, perform reverse geocoding to get location name
+        if (coords) {
+            try {
+                locationName = await getLocationName(row);
+            } catch (error) {
+                console.error('Error getting location name:', error);
+                locationName = `Lat: ${coords.lat.toFixed(6)}, Lon: ${coords.lon.toFixed(6)}`;
+            }
+            
+            features.push({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [coords.lon, coords.lat]
+                },
+                properties: {
+                    'Status Progress': row['Status Progress'] || '',
+                    'Skala Prioritas': row['Skala Prioritas'] || '',
+                    'Alasan Urgensi': row['Alasan Urgensi'] || '',
+                    'Kebutuhan Alat Berat': row['Kebutuhan Alat Berat'] || '',
+                    'Koordinat X (Longitude)': row['Koordinat X (Longitude)'] || coords.lon.toFixed(6),
+                    'Koordinat Y (Latitude)': row['Koordinat Y (Latitude)'] || coords.lat.toFixed(6),
+                    'Koordinat Jalan Rusak': locationName, // Reverse geocoded location name
+                    'Dokumentasi Jalan Rusak': row['Dokumentasi Jalan Rusak'] || ''
+                }
+            });
+        }
+    }
+    
+    json_Form_Pengaduan_Jalan_Rusak_3.features = features;
     
     console.log('GeoJSON features:', json_Form_Pengaduan_Jalan_Rusak_3.features.length);
     
@@ -113,11 +389,11 @@ function highlightFeature(e) {
       highlightLayer.setStyle({
         color: '#ffff00',
       });
-    } else {
-      highlightLayer.setStyle({
-        fillColor: '#ffff00',
-        fillOpacity: 1
-      });
+    // } else {
+    //   highlightLayer.setStyle({
+    //     fillColor: '#ffff00',
+    //     fillOpacity: 1
+    //   });
     }
     highlightLayer.openPopup();
 }
@@ -256,23 +532,34 @@ function pop_Form_Pengaduan_Jalan_Rusak_3(feature, layer) {
     function formatFieldValue(value) {
         if (!value) return '';
         const strValue = String(value).trim();
-        // Only apply autolinker if it's an actual URL, otherwise return plain text
         if (isUrl(strValue)) {
             return autolinker.link(strValue.replace(/'/g, '\''));
         }
         return strValue.replace(/'/g, '\'');
-
     }
     
-    // Handle documentation links separately (don't use autolinker)
+    // Check if Longitude and Latitude are valid
+    const hasValidLon = feature.properties['Koordinat X (Longitude)'] && !isNaN(parseFloat(feature.properties['Koordinat X (Longitude)']));
+    const hasValidLat = feature.properties['Koordinat Y (Latitude)'] && !isNaN(parseFloat(feature.properties['Koordinat Y (Latitude)']));
+    
+    // Get display values for coordinates
+    let displayLon = feature.properties['Koordinat X (Longitude)'];
+    let displayLat = feature.properties['Koordinat Y (Latitude)'];
+    
+    // If coordinates are missing/invalid, extract from the feature's geometry
+    if (!hasValidLon || !hasValidLat) {
+        const coords = feature.geometry.coordinates;
+        if (coords && coords.length === 2) {
+            if (!hasValidLon) displayLon = coords[0].toFixed(6);
+            if (!hasValidLat) displayLat = coords[1].toFixed(6);
+        }
+    }
+    
+    // Handle documentation links separately
     const docLink = feature.properties['Dokumentasi Jalan Rusak'] ? 
         '<a href="' + String(feature.properties['Dokumentasi Jalan Rusak']).trim() + '" target="_blank" style="color: #0078d4; text-decoration: underline;">Open Link</a>' : '';
     
     var popupContent = '<table>\
-            <tr>\
-                <th scope="row">Submission Date</th>\
-                <td class="visible-with-data" id="Submission Date">' + (feature.properties['Submission Date'] !== null ? formatFieldValue(feature.properties['Submission Date']) : '') + '</td>\
-            </tr>\
             <tr>\
                 <th scope="row">Skala Prioritas</th>\
                 <td class="visible-with-data" id="Skala Prioritas">' + (feature.properties['Skala Prioritas'] !== null ? formatFieldValue(feature.properties['Skala Prioritas']) : '') + '</td>\
@@ -286,16 +573,24 @@ function pop_Form_Pengaduan_Jalan_Rusak_3(feature, layer) {
                 <td class="visible-with-data" id="Kebutuhan Alat Berat">' + (feature.properties['Kebutuhan Alat Berat'] !== null ? formatFieldValue(feature.properties['Kebutuhan Alat Berat']) : '') + '</td>\
             </tr>\
             <tr>\
+                <th scope="row">Koordinat Jalan Rusak</th>\
+                <td class="visible-with-data" id="Koordinat Jalan Rusak">' + (feature.properties['Koordinat Jalan Rusak'] !== null ? formatFieldValue(feature.properties['Koordinat Jalan Rusak']) : '') + '</td>\
+            </tr>\
+            <tr>\
                 <th scope="row">Koordinat X (Longitude)</th>\
-                <td class="visible-with-data" id="Koordinat X (Longitude)">' + (feature.properties['Koordinat X (Longitude)'] !== null ? formatFieldValue(feature.properties['Koordinat X (Longitude)']) : '') + '</td>\
+                <td class="visible-with-data" id="Koordinat X (Longitude)">' + (displayLon !== null ? formatFieldValue(displayLon) : '') + '</td>\
             </tr>\
             <tr>\
                 <th scope="row">Koordinat Y (Latitude)</th>\
-                <td class="visible-with-data" id="Koordinat Y (Latitude)">' + (feature.properties['Koordinat Y (Latitude)'] !== null ? formatFieldValue(feature.properties['Koordinat Y (Latitude)']) : '') + '</td>\
+                <td class="visible-with-data" id="Koordinat Y (Latitude)">' + (displayLat !== null ? formatFieldValue(displayLat) : '') + '</td>\
             </tr>\
             <tr>\
                 <th scope="row">Dokumentasi Jalan Rusak</th>\
                 <td class="visible-with-data" id="Dokumentasi Jalan Rusak">' + docLink + '</td>\
+            </tr>\
+            <tr>\
+                <th scope="row">Status Progress</th>\
+                <td class="visible-with-data" id="Status Progress">' + (feature.properties['Status Progress'] !== null ? formatFieldValue(feature.properties['Status Progress']) : '') + '</td>\
             </tr>\
         </table>';
     var content = removeEmptyRowsFromPopupContent(popupContent, feature);
@@ -502,13 +797,13 @@ document.getElementById("menu").appendChild(reset_SkalaPrioritas);
 var sel_SkalaPrioritas = document.getElementById('div_SkalaPrioritas');
 noUiSlider.create(sel_SkalaPrioritas, {
     connect: true,
-    start: [4, 5],
+    start: [1, 5],
     step: 1,
     format: wNumb({
         decimals: 0,
     }),
     range: {
-    min: 4,
+    min: 1,
     max: 5
     }
 });
