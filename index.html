@@ -784,7 +784,6 @@ setTimeout(function() {
 // Set sidebar title and description
 col2.innerHTML = '<div style="padding:12px;font-family:Arial, sans-serif;color:#222">\
     <h3>Peta Kerusakan Jalan</h3>\
-    <p style="text-align: justify;">Peta ini menampilkan titik-titik kerusakan jalan di wilayah Tanjung Field. Setiap titik menunjukkan lokasi kerusakan jalan beserta informasi terkait seperti skala prioritas, alasan urgensi, kebutuhan alat berat, dokumentasi foto kerusakan, dan status pengerjaan.</p>\
 </div>';
 
 var Filters = {"Skala Prioritas": "int"};
@@ -878,9 +877,6 @@ var formSection = document.createElement('div');
 formSection.style.cssText = 'padding:12px;margin-top:20px;border-top:1px solid #ddd;font-family:Arial, sans-serif;color:#222;';
 formSection.innerHTML = '\
     <h3 style="font-size: 14px; margin-top: 0;">📝 Pengaduan Kerusakan Jalan</h3>\
-    <p style="text-align: justify; font-size: 12px; line-height: 1.4; margin-bottom: 12px;"><b>Kami mengundang Anda untuk melaporkan kerusakan jalan yang Anda temui di wilayah Tanjung Field.</b> </p>\
-    <p style="text-align: justify; font-size: 12px; line-height: 1.4; margin-bottom: 12px;">Dengan melaporkan kerusakan jalan, Anda turut berkontribusi dalam menjaga kualitas infrastruktur jalan demi keselamatan dan kenyamanan bersama.Silakan klik tombol di bawah ini untuk membuka formulir pengaduan:</p>\
-    <label style="font-weight: bold; display: block; margin-bottom: 8px;">Tambah Data Baru</label>\
     <button style="background: #004ba8; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; width: 100%; transition: background 0.3s;" onmouseover="this.style.background=\'#003580\'" onmouseout="this.style.background=\'#004ba8\'" onclick="window.open(\'https://form.jotform.com/253162999499479\', \'_blank\')">📝 Buka Form Pengaduan</button>\
 ';
 document.getElementById("menu").appendChild(formSection);
