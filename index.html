@@ -772,7 +772,40 @@ col2.style.display = "inline-block";
 mapDiv.parentNode.insertBefore(row, mapDiv);
 document.getElementById("all").appendChild(col1);
 document.getElementById("all").appendChild(col2);
-col1.appendChild(mapDiv)
+col1.appendChild(mapDiv);
+
+// Mobile responsiveness
+var isMobile = window.innerWidth <= 768;
+var mobileToggle = null;
+
+if (isMobile) {
+    // Create mobile toggle button
+    mobileToggle = document.createElement('button');
+    mobileToggle.className = 'mobile-toggle';
+    mobileToggle.innerHTML = '☰';
+    mobileToggle.title = 'Toggle Menu';
+    mobileToggle.onclick = function() {
+        var menu = document.getElementById('menu');
+        menu.classList.toggle('mobile-open');
+        // Invalidate map size when sidebar opens/closes
+        setTimeout(function() {
+            if (map && typeof map.invalidateSize === 'function') {
+                map.invalidateSize();
+            }
+        }, 300);
+    };
+    document.body.appendChild(mobileToggle);
+}
+
+// Handle window resize
+window.addEventListener('resize', function() {
+    var wasMobile = isMobile;
+    isMobile = window.innerWidth <= 768;
+
+    if (wasMobile !== isMobile) {
+        location.reload(); // Reload to apply new layout
+    }
+});
 
 setTimeout(function() {
     if (map && typeof map.invalidateSize === 'function') {
