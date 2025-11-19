@@ -63,6 +63,10 @@
         .fa, .leaflet-container, a {
             color: #444444 !important;
         }
+        .leaflet-popup-content a {
+            color: #0078d4 !important;
+            text-decoration: underline !important;
+        }
         .leaflet-control-zoom-in, .leaflet-control-zoom-out,
         .leaflet-control-locate a,
         .leaflet-touch .leaflet-control-geocoder-icon,
