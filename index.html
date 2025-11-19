@@ -979,34 +979,47 @@ var mapWindow = document.getElementById('mapWindow');
 var isResizing = false;
 var startX, startWidth;
 
-splitter.addEventListener('mousedown', function(e) {
+function startResize(e) {
     isResizing = true;
-    startX = e.clientX;
+    startX = e.clientX || e.touches[0].clientX;
     startWidth = menu.offsetWidth;
     document.body.style.cursor = 'ew-resize';
     document.body.style.userSelect = 'none';
-});
+    document.body.style.touchAction = 'none';
+}
 
-document.addEventListener('mousemove', function(e) {
+function doResize(e) {
     if (!isResizing) return;
-    var dx = e.clientX - startX;
+    var clientX = e.clientX || e.touches[0].clientX;
+    var dx = clientX - startX;
     var newWidth = startWidth - dx;
     var containerWidth = document.getElementById('all').offsetWidth;
-    var minWidth = 200; // Minimum width for sidebar
-    var maxWidth = containerWidth - 200; // Minimum width for map
+    var minWidth = window.innerWidth <= 768 ? 150 : 200; // Smaller min width on mobile
+    var maxWidth = containerWidth - (window.innerWidth <= 768 ? 150 : 200); // Smaller min map width on mobile
     if (newWidth < minWidth) newWidth = minWidth;
     if (newWidth > maxWidth) newWidth = maxWidth;
     menu.style.flex = '0 0 ' + newWidth + 'px';
-    map.invalidateSize(); // Refresh map size
-});
+    if (map) map.invalidateSize(); // Refresh map size
+}
 
-document.addEventListener('mouseup', function() {
+function stopResize() {
     if (isResizing) {
         isResizing = false;
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
+        document.body.style.touchAction = '';
     }
-});
+}
+
+// Mouse events
+splitter.addEventListener('mousedown', startResize);
+document.addEventListener('mousemove', doResize);
+document.addEventListener('mouseup', stopResize);
+
+// Touch events for mobile
+splitter.addEventListener('touchstart', startResize, { passive: false });
+document.addEventListener('touchmove', doResize, { passive: false });
+document.addEventListener('touchend', stopResize);
         </script>
     </body>
 </html>
