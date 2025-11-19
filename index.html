@@ -762,15 +762,17 @@ row.style.height = "100%";
 var col1 = document.createElement('div');
 col1.className="col9";
 col1.id = "mapWindow";
-col1.style.height = "99%";
-col1.style.width = "80%";
-col1.style.display = "inline-block";
+col1.style.height = "100%";
+col1.style.flex = "1";
+var splitter = document.createElement('div');
+splitter.id = "splitter";
 var col2 = document.createElement('div');
 col2.className="col3";
 col2.id = "menu";
-col2.style.display = "inline-block";
+col2.style.flex = "0 0 20%";
 mapDiv.parentNode.insertBefore(row, mapDiv);
 document.getElementById("all").appendChild(col1);
+document.getElementById("all").appendChild(splitter);
 document.getElementById("all").appendChild(col2);
 col1.appendChild(mapDiv)
 
@@ -969,6 +971,42 @@ function searchSubmissionId() {
 
 // Initialize data loading
 window.addEventListener('DOMContentLoaded', init);
+
+// Resizable sidebar functionality
+var splitter = document.getElementById('splitter');
+var menu = document.getElementById('menu');
+var mapWindow = document.getElementById('mapWindow');
+var isResizing = false;
+var startX, startWidth;
+
+splitter.addEventListener('mousedown', function(e) {
+    isResizing = true;
+    startX = e.clientX;
+    startWidth = menu.offsetWidth;
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+});
+
+document.addEventListener('mousemove', function(e) {
+    if (!isResizing) return;
+    var dx = e.clientX - startX;
+    var newWidth = startWidth - dx;
+    var containerWidth = document.getElementById('all').offsetWidth;
+    var minWidth = 200; // Minimum width for sidebar
+    var maxWidth = containerWidth - 200; // Minimum width for map
+    if (newWidth < minWidth) newWidth = minWidth;
+    if (newWidth > maxWidth) newWidth = maxWidth;
+    menu.style.flex = '0 0 ' + newWidth + 'px';
+    map.invalidateSize(); // Refresh map size
+});
+
+document.addEventListener('mouseup', function() {
+    if (isResizing) {
+        isResizing = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    }
+});
         </script>
     </body>
 </html>
