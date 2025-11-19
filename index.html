@@ -357,6 +357,7 @@ async function myFunction(results) {
                     coordinates: [coords.lon, coords.lat]
                 },
                 properties: {
+                    'Submission ID': row['Submission ID'] || '',
                     'Status Progress': row['Status Progress'] || '',
                     'Skala Prioritas': row['Skala Prioritas'] || '',
                     'Alasan Urgensi': row['Alasan Urgensi'] || '',
@@ -407,7 +408,6 @@ map.on('click', function(e) {
     map.closePopup();
 });
 
-var hash = new L.Hash(map);
 map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
 var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
 
@@ -465,7 +465,8 @@ document.getElementsByClassName('leaflet-control-measure-toggle')[0].className +
 var bounds_group = new L.featureGroup([]);
 
 function setBounds() {
-    map.setMaxBounds(map.getBounds());
+    // Remove or comment out map.setMaxBounds to allow free navigation
+    // map.setMaxBounds(map.getBounds());
 }
 
 map.createPane('pane_GoogleSatelliteHybrid_0');
@@ -586,6 +587,10 @@ function pop_Form_Pengaduan_Jalan_Rusak_3(feature, layer) {
     
     var popupContent = '<table>\
             <tr>\
+                <th scope="row">Submission ID</th>\
+                <td class="visible-with-data" id="Submission ID">' + (feature.properties['Submission ID'] !== null ? formatFieldValue(feature.properties['Submission ID']) : '') + '</td>\
+            </tr>\
+            <tr>\
                 <th scope="row">Skala Prioritas</th>\
                 <td class="visible-with-data" id="Skala Prioritas">' + (feature.properties['Skala Prioritas'] !== null ? formatFieldValue(feature.properties['Skala Prioritas']) : '') + '</td>\
             </tr>\
@@ -696,11 +701,45 @@ var osmGeocoder = new L.Control.Geocoder({
     collapsed: true,
     position: 'topleft',
     text: 'Search',
-    title: 'Testing'
-}).addTo(map);
+    title: 'Search for a place'
+});
+
+osmGeocoder.on('markgeocode', function(e) {
+    var bbox = e.geocode.bbox;
+    var poly = L.polygon([
+        bbox.getSouthEast(),
+        bbox.getSouthWest(),
+        bbox.getNorthWest(),
+        bbox.getNorthEast()
+    ]);
+    map.fitBounds(poly.getBounds(), {maxZoom: 17});
+    map.closePopup();
+});
+
+osmGeocoder.addTo(map);
 
 document.getElementsByClassName('leaflet-control-geocoder-icon')[0].className += ' fa fa-search';
-document.getElementsByClassName('leaflet-control-geocoder-icon')[0].title += 'Search for a place';
+document.getElementsByClassName('leaflet-control-geocoder-icon')[0].title = 'Search for a place';
+
+// Add zoom to layer button
+var zoomToLayerControl = L.control({position: 'topleft'});
+zoomToLayerControl.onAdd = function(map) {
+    var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+    div.innerHTML = '<a href="#" title="Zoom to Titik Jalan Rusak" style="background-color:#fff;border:1px solid #ccc;border-radius:4px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;" onclick="zoomToTitikJalanRusak();return false;">🎯</a>';
+    div.style.backgroundColor = 'white';
+    return div;
+};
+zoomToLayerControl.addTo(map);
+
+// Function to zoom to layer bounds
+function zoomToTitikJalanRusak() {
+    if (layer_Form_Pengaduan_Jalan_Rusak_3 && layer_Form_Pengaduan_Jalan_Rusak_3.getBounds().isValid()) {
+        map.fitBounds(layer_Form_Pengaduan_Jalan_Rusak_3.getBounds(), {padding: [50, 50]});
+        console.log('Zoomed to Titik Jalan Rusak layer');
+    } else {
+        alert('Layer data not available yet. Please wait for data to load.');
+    }
+}
 
 var overlaysTree = [
     {label: '<img src="legend/Form_Pengaduan_Jalan_Rusak_3.png" /> Titik Jalan Rusak', layer: layer_Form_Pengaduan_Jalan_Rusak_3},
@@ -742,6 +781,7 @@ setTimeout(function() {
     }
 }, 200);
 
+// Set sidebar title and description
 col2.innerHTML = '<div style="padding:12px;font-family:Arial, sans-serif;color:#222">\
     <h3>Peta Kerusakan Jalan</h3>\
     <p style="text-align: justify;">Peta ini menampilkan titik-titik kerusakan jalan di wilayah Tanjung Field. Setiap titik menunjukkan lokasi kerusakan jalan beserta informasi terkait seperti skala prioritas, alasan urgensi, kebutuhan alat berat, dokumentasi foto kerusakan, dan status pengerjaan.</p>\
@@ -802,23 +842,58 @@ function filterFunc() {
   })
 }
 
+// Create filter slider container
 document.getElementById("menu").appendChild(document.createElement("div"));
 var div_SkalaPrioritas = document.createElement("div");
 div_SkalaPrioritas.id = "div_SkalaPrioritas";
 div_SkalaPrioritas.className = "slider";
 document.getElementById("menu").appendChild(div_SkalaPrioritas);
+
 var lab_SkalaPrioritas = document.createElement('div');
 lab_SkalaPrioritas.innerHTML  = 'Skala Prioritas: <span id="val_SkalaPrioritas"></span>';
 lab_SkalaPrioritas.className = 'filterlabel';
 document.getElementById("menu").appendChild(lab_SkalaPrioritas);
+
 var reset_SkalaPrioritas = document.createElement('div');
 reset_SkalaPrioritas.innerHTML = 'clear filter';
 reset_SkalaPrioritas.className = 'filterlabel';
-lab_SkalaPrioritas.className = 'filterlabel';
 reset_SkalaPrioritas.onclick = function() {
     sel_SkalaPrioritas.noUiSlider.reset();
 };
 document.getElementById("menu").appendChild(reset_SkalaPrioritas);
+
+// Create search section
+var searchSection = document.createElement('div');
+searchSection.style.cssText = 'padding:12px;margin-top:20px;border-top:1px solid #ddd;font-family:Arial, sans-serif;color:#222;';
+searchSection.innerHTML = '\
+    <h3 style="font-size: 14px; margin-top: 0;">🔍 Cari Submission ID</h3>\
+    <input type="text" id="submissionIdSearch" placeholder="Masukkan Submission ID" style="width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">\
+    <button id="searchButton" style="background: #004ba8; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; width: 100%; transition: background 0.3s;" onmouseover="this.style.background=\'#003580\'" onmouseout="this.style.background=\'#004ba8\'">🔍 Cari</button>\
+    <div id="searchMessage" style="margin-top: 8px; color: red; font-size: 12px; display: none;"></div>\
+';
+document.getElementById("menu").appendChild(searchSection);
+
+// Create form section below search
+var formSection = document.createElement('div');
+formSection.style.cssText = 'padding:12px;margin-top:20px;border-top:1px solid #ddd;font-family:Arial, sans-serif;color:#222;';
+formSection.innerHTML = '\
+    <h3 style="font-size: 14px; margin-top: 0;">📝 Pengaduan Kerusakan Jalan</h3>\
+    <p style="text-align: justify; font-size: 12px; line-height: 1.4; margin-bottom: 12px;"><b>Kami mengundang Anda untuk melaporkan kerusakan jalan yang Anda temui di wilayah Tanjung Field.</b> </p>\
+    <p style="text-align: justify; font-size: 12px; line-height: 1.4; margin-bottom: 12px;">Dengan melaporkan kerusakan jalan, Anda turut berkontribusi dalam menjaga kualitas infrastruktur jalan demi keselamatan dan kenyamanan bersama.Silakan klik tombol di bawah ini untuk membuka formulir pengaduan:</p>\
+    <label style="font-weight: bold; display: block; margin-bottom: 8px;">Tambah Data Baru</label>\
+    <button style="background: #004ba8; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; width: 100%; transition: background 0.3s;" onmouseover="this.style.background=\'#003580\'" onmouseout="this.style.background=\'#004ba8\'" onclick="window.open(\'https://form.jotform.com/253162999499479\', \'_blank\')">📝 Buka Form Pengaduan</button>\
+';
+document.getElementById("menu").appendChild(formSection);
+
+// Create feedback link section at the bottom
+var feedbackSection = document.createElement('div');
+feedbackSection.style.cssText = 'padding:12px;margin-top:20px;border-top:1px solid #ddd;font-family:Arial, sans-serif;color:#222;text-align:center;';
+feedbackSection.innerHTML = '\
+    <a href="https://forms.gle/Buo2tXrUaXFttrxr6" target="_blank" style="color: #004ba8; text-decoration: none; font-size: 12px; font-weight: bold;">👉🏻Tekan Saya Jika Anda Mempunyai Tanggapan Terkait Website ini👈🏻</a>\
+';
+document.getElementById("menu").appendChild(feedbackSection);
+
+// Initialize slider
 var sel_SkalaPrioritas = document.getElementById('div_SkalaPrioritas');
 noUiSlider.create(sel_SkalaPrioritas, {
     connect: true,
@@ -832,17 +907,70 @@ noUiSlider.create(sel_SkalaPrioritas, {
     max: 5
     }
 });
+
 sel_SkalaPrioritas.noUiSlider.on('update', function (values) {
-filterVals =[];
-for (value in values){
-filterVals.push(parseInt(value))
-}
-val_SkalaPrioritas = document.getElementById('val_SkalaPrioritas');
-val_SkalaPrioritas.innerHTML = values.join(' - ');
+    val_SkalaPrioritas = document.getElementById('val_SkalaPrioritas');
+    val_SkalaPrioritas.innerHTML = values.join(' - ');
     filterFunc()
 });
 
-// Initialize Tabletop after all setup is complete
+// Add search functionality
+document.getElementById('searchButton').addEventListener('click', function() {
+    searchSubmissionId();
+});
+
+document.getElementById('submissionIdSearch').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        searchSubmissionId();
+    }
+});
+
+function searchSubmissionId() {
+    var searchId = document.getElementById('submissionIdSearch').value.trim();
+    var messageDiv = document.getElementById('searchMessage');
+    
+    if (!searchId) {
+        messageDiv.style.display = 'block';
+        messageDiv.textContent = 'Mohon masukkan Submission ID';
+        messageDiv.style.color = 'orange';
+        return;
+    }
+    
+    if (!layer_Form_Pengaduan_Jalan_Rusak_3 || !json_Form_Pengaduan_Jalan_Rusak_3.features) {
+        messageDiv.style.display = 'block';
+        messageDiv.textContent = 'Data belum dimuat. Silakan tunggu sebentar.';
+        messageDiv.style.color = 'orange';
+        return;
+    }
+    
+    var found = false;
+    json_Form_Pengaduan_Jalan_Rusak_3.features.forEach(function(feature, index) {
+        if (feature.properties['Submission ID'] && feature.properties['Submission ID'].toString().trim() === searchId) {
+            // Zoom to the feature
+            var latlng = L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+            map.setView(latlng, 18); // Zoom level 18 for close view
+            
+            // Find the layer and open popup
+            layer_Form_Pengaduan_Jalan_Rusak_3.eachLayer(function(layer) {
+                if (layer.feature === feature) {
+                    layer.openPopup();
+                }
+            });
+            
+            found = true;
+            messageDiv.style.display = 'none';
+            return;
+        }
+    });
+    
+    if (!found) {
+        messageDiv.style.display = 'block';
+        messageDiv.textContent = 'Mohon maaf, tidak ada ditemukan ID yang sesuai';
+        messageDiv.style.color = 'red';
+    }
+}
+
+// Initialize data loading
 window.addEventListener('DOMContentLoaded', init);
         </script>
     </body>
