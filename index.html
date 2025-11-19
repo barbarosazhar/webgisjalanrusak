@@ -772,40 +772,7 @@ col2.style.display = "inline-block";
 mapDiv.parentNode.insertBefore(row, mapDiv);
 document.getElementById("all").appendChild(col1);
 document.getElementById("all").appendChild(col2);
-col1.appendChild(mapDiv);
-
-// Mobile responsiveness
-var isMobile = window.innerWidth <= 800;
-var mobileToggle = null;
-
-if (isMobile) {
-    // Create mobile toggle button
-    mobileToggle = document.createElement('button');
-    mobileToggle.className = 'mobile-toggle';
-    mobileToggle.innerHTML = '☰';
-    mobileToggle.title = 'Toggle Menu';
-    mobileToggle.onclick = function() {
-        var menu = document.getElementById('menu');
-        menu.classList.toggle('mobile-open');
-        // Invalidate map size when sidebar opens/closes
-        setTimeout(function() {
-            if (map && typeof map.invalidateSize === 'function') {
-                map.invalidateSize();
-            }
-        }, 300);
-    };
-    document.body.appendChild(mobileToggle);
-}
-
-// Handle window resize
-window.addEventListener('resize', function() {
-    var wasMobile = isMobile;
-    isMobile = window.innerWidth <= 800;
-
-    if (wasMobile !== isMobile) {
-        location.reload(); // Reload to apply new layout
-    }
-});
+col1.appendChild(mapDiv)
 
 setTimeout(function() {
     if (map && typeof map.invalidateSize === 'function') {
@@ -910,6 +877,7 @@ var formSection = document.createElement('div');
 formSection.style.cssText = 'padding:12px;margin-top:20px;border-top:1px solid #ddd;font-family:Arial, sans-serif;color:#222;';
 formSection.innerHTML = '\
     <h3 style="font-size: 14px; margin-top: 0;">📝 Pengaduan Kerusakan Jalan</h3>\
+    <label style="font-weight: bold; display: block; margin-bottom: 8px;">Tambah Data Baru</label>\
     <button style="background: #004ba8; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; width: 100%; transition: background 0.3s;" onmouseover="this.style.background=\'#003580\'" onmouseout="this.style.background=\'#004ba8\'" onclick="window.open(\'https://form.jotform.com/253162999499479\', \'_blank\')">📝 Buka Form Pengaduan</button>\
 ';
 document.getElementById("menu").appendChild(formSection);
