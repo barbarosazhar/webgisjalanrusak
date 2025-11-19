@@ -582,7 +582,7 @@ function pop_Form_Pengaduan_Jalan_Rusak_3(feature, layer) {
     var displayLatDMS = parsedLat !== null && !isNaN(parsedLat) ? decimalToDMS(parsedLat, 'latitude') : '';
     
     // Handle documentation links separately
-    const docLink = feature.properties['Dokumentasi Jalan Rusak'] ? 
+    const docLink = feature.properties['Dokumentasi Jalan Rusak'] ?
         '<a href="' + String(feature.properties['Dokumentasi Jalan Rusak']).trim() + '" target="_blank" style="color: #0078d4; text-decoration: underline;">Open Link</a>' : '';
     
     var popupContent = '<table>\
