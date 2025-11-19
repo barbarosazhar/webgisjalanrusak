@@ -775,7 +775,7 @@ document.getElementById("all").appendChild(col2);
 col1.appendChild(mapDiv);
 
 // Mobile responsiveness
-var isMobile = window.innerWidth <= 768;
+var isMobile = window.innerWidth <= 800;
 var mobileToggle = null;
 
 if (isMobile) {
@@ -800,7 +800,7 @@ if (isMobile) {
 // Handle window resize
 window.addEventListener('resize', function() {
     var wasMobile = isMobile;
-    isMobile = window.innerWidth <= 768;
+    isMobile = window.innerWidth <= 800;
 
     if (wasMobile !== isMobile) {
         location.reload(); // Reload to apply new layout
