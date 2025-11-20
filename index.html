@@ -361,6 +361,7 @@ async function myFunction(results) {
                     'Status Progress': row['Status Progress'] || '',
                     'Skala Prioritas': row['Skala Prioritas'] || '',
                     'Alasan Urgensi': row['Alasan Urgensi'] || '',
+                    'Alasan Tertunda': row['Alasan Tertunda'] || '',
                     'Kebutuhan Alat Berat': row['Kebutuhan Alat Berat'] || '',
                     'Koordinat X (Longitude)': row['Koordinat X (Longitude)'] || coords.lon.toFixed(6),
                     'Koordinat Y (Latitude)': row['Koordinat Y (Latitude)'] || coords.lat.toFixed(6),
@@ -620,9 +621,13 @@ function pop_Form_Pengaduan_Jalan_Rusak_3(feature, layer) {
             </tr>\
             <tr>\
                 <th scope="row">Status Progress</th>\
-                <td class="visible-with-data" id="Status Progress">' + (feature.properties['Status Progress'] !== null ? formatFieldValue(feature.properties['Status Progress']) : '') + '</td>\
-            </tr>\
-        </table>';
+                <td class="visible-with-data" id="Status Progress" style="color: ' + (function() { var val = feature.properties['Status Progress']; if (val === 'Ditunda') return '#b10202'; else if (val === 'Laporan Diterima') return '#0a53a8'; else if (val === 'Dalam Pengerjaan') return '#cf9a10'; else if (val === 'Selesai') return '#11734b'; else return 'inherit'; })() + ';">' + (feature.properties['Status Progress'] !== null ? formatFieldValue(feature.properties['Status Progress']) : '') + '</td>\
+            </tr>' +
+            (feature.properties['Alasan Tertunda'] ? '<tr>\
+                <th scope="row" style="color: #b10202;">Alasan Tertunda</th>\
+                <td style="color: #b10202;">' + formatFieldValue(feature.properties['Alasan Tertunda']) + '</td>\
+            </tr>' : '') +
+        '</table>';
     var content = removeEmptyRowsFromPopupContent(popupContent, feature);
     layer.on('popupopen', function(e) {
         addClassToPopupIfMedia(content, e.popup);
