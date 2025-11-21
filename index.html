@@ -676,7 +676,15 @@ function initializeLayer() {
     map.getPane('pane_Form_Pengaduan_Jalan_Rusak_3').style.zIndex = 403;
     map.getPane('pane_Form_Pengaduan_Jalan_Rusak_3').style['mix-blend-mode'] = 'normal';
     
-    layer_Form_Pengaduan_Jalan_Rusak_3 = new L.geoJson.multiStyle(json_Form_Pengaduan_Jalan_Rusak_3, {
+    // Filter out 'Selesai' markers by default
+    var filteredGeoJSON = JSON.parse(JSON.stringify(json_Form_Pengaduan_Jalan_Rusak_3));
+    if (filteredGeoJSON && filteredGeoJSON.features) {
+        filteredGeoJSON.features = filteredGeoJSON.features.filter(function(feature) {
+            return feature.properties['Status Progress'] !== 'Selesai';
+        });
+    }
+    
+    layer_Form_Pengaduan_Jalan_Rusak_3 = new L.geoJson.multiStyle(filteredGeoJSON, {
         attribution: '',
         interactive: true,
         dataVar: 'json_Form_Pengaduan_Jalan_Rusak_3',
@@ -700,6 +708,11 @@ function initializeLayer() {
     
     bounds_group.addLayer(layer_Form_Pengaduan_Jalan_Rusak_3);
     map.addLayer(layer_Form_Pengaduan_Jalan_Rusak_3);
+    
+    // Store the original features for filtering
+    if (!window.originalFeatures) {
+        window.originalFeatures = JSON.parse(JSON.stringify(json_Form_Pengaduan_Jalan_Rusak_3.features));
+    }
 }
 
 var osmGeocoder = new L.Control.Geocoder({
@@ -793,80 +806,209 @@ col2.innerHTML = '<div style="padding:12px;font-family:Arial, sans-serif;color:#
     <h3>Peta Kerusakan Jalan</h3>\
 </div>';
 
-var Filters = {"Skala Prioritas": "int"};
+var Filters = {"Skala Prioritas": "int", "Status Progress": "str"};
 
+/**
+ * Function to filter layer features based on user selection.
+ * Iterates over all layers on the map, and for each layer, iterates over the
+ * features of that layer. For each feature, checks if the feature's property
+ * values match the user's selection. If not, removes the feature from the layer.
+ */
 function filterFunc() {
-  map.eachLayer(function(lyr){
-  if ("options" in lyr && "dataVar" in lyr["options"]){
-    features = this[lyr["options"]["dataVar"]].features.slice(0);
-    try{
-      for (key in Filters){
-        keyS = key.replace(/[^a-zA-Z0-9_]/g, "")
-        if (Filters[key] == "str" || Filters[key] == "bool"){
-          var selection = [];
-          var options = document.getElementById("sel_" + keyS).options
-          for (var i=0; i < options.length; i++) {
-            if (options[i].selected) selection.push(options[i].value);
-          }
-            try{
-              if (key in features[0].properties){
-                for (i = features.length - 1;
-                  i >= 0; --i){
-                  if (selection.indexOf(
-                  features[i].properties[key])<0
-                  && selection.length>0) {
-                  features.splice(i,1);
-                  }
-                }
-              }
-            } catch(err){
+  map.eachLayer(function(lyr) {
+    if ("options" in lyr && "dataVar" in lyr["options"]) {
+      // Use original features for filtering
+      var features = JSON.parse(JSON.stringify(window.originalFeatures || this[lyr["options"]["dataVar"]].features));
+      
+      try {
+        // Check if 'Selesai' is selected in Status Progress filter
+        var statusProgressOptions = document.getElementById('sel_StatusProgress').options;
+        var isSelesaiSelected = false;
+        for (var i = 0; i < statusProgressOptions.length; i++) {
+          if (statusProgressOptions[i].selected && statusProgressOptions[i].value === 'Selesai') {
+            isSelesaiSelected = true;
+            break;
           }
         }
-        if (Filters[key] == "int"){
-          sliderVals =  document.getElementById(
-            "div_" + keyS).noUiSlider.get();
-          try{
-            if (key in features[0].properties){
-            for (i = features.length - 1; i >= 0; --i){
-              if (parseInt(features[i].properties[key])
-                  < sliderVals[0]
-                  || parseInt(features[i].properties[key])
-                  > sliderVals[1]){
-                    features.splice(i,1);
+
+        for (var key in Filters) {
+          if (Filters.hasOwnProperty(key)) {
+            var keyS = key.replace(/[^a-zA-Z0-9_]/g, "");
+            
+            if (Filters[key] === "str" || Filters[key] === "bool") {
+              var selection = [];
+              var options = document.getElementById("sel_" + keyS).options;
+              
+              for (var j = 0; j < options.length; j++) {
+                if (options[j].selected) selection.push(options[j].value);
+              }
+              
+              // If no status is selected, hide 'Selesai' markers by default
+              if (key === 'Status Progress' && selection.length === 0) {
+                selection = ['Ditunda', 'Laporan Diterima', 'Dalam Pengerjaan'];
+              }
+              
+              try {
+                if (features.length > 0 && key in features[0].properties) {
+                  for (var i = features.length - 1; i >= 0; i--) {
+                    // Skip if feature is 'Selesai' and not selected
+                    if (key === 'Status Progress' && 
+                        features[i].properties[key] === 'Selesai' && 
+                        !isSelesaiSelected) {
+                      features.splice(i, 1);
+                      continue;
+                    }
+                    
+                    if (selection.indexOf(features[i].properties[key]) < 0 && selection.length > 0) {
+                      features.splice(i, 1);
+                    }
                   }
                 }
+              } catch (err) {
+                console.error('Error filtering features:', err);
               }
-            } catch(err){
+            }
+            else if (Filters[key] === "int") {
+              try {
+                var slider = document.getElementById("div_" + keyS).noUiSlider;
+                if (slider) {
+                  var sliderVals = slider.get();
+                  
+                  if (features.length > 0 && key in features[0].properties) {
+                    for (var i = features.length - 1; i >= 0; i--) {
+                      var value = parseInt(features[i].properties[key], 10);
+                      if (isNaN(value) || value < sliderVals[0] || value > sliderVals[1]) {
+                        features.splice(i, 1);
+                      }
+                    }
+                  }
+                }
+              } catch (err) {
+                console.error('Error with slider filter:', err);
+              }
             }
           }
+        }
+        
+        // Update the layer with filtered features
+        this[lyr["options"]["layerName"]].clearLayers();
+        if (features.length > 0) {
+          this[lyr["options"]["layerName"]].addData(features);
+        }
+        
+      } catch (err) {
+        console.error('Error in filter function:', err);
       }
-    } catch(err){
     }
-  this[lyr["options"]["layerName"]].clearLayers();
-  this[lyr["options"]["layerName"]].addData(features);
-  }
-  })
+  });
 }
 
 // Create filter slider container
 document.getElementById("menu").appendChild(document.createElement("div"));
-var div_SkalaPrioritas = document.createElement("div");
-div_SkalaPrioritas.id = "div_SkalaPrioritas";
-div_SkalaPrioritas.className = "slider";
-document.getElementById("menu").appendChild(div_SkalaPrioritas);
 
+// Create a container for Skala Prioritas label and clear filter
+var skalaPrioritasHeader = document.createElement('div');
+skalaPrioritasHeader.style.display = 'flex';
+skalaPrioritasHeader.style.justifyContent = 'space-between';
+skalaPrioritasHeader.style.alignItems = 'center';
+skalaPrioritasHeader.style.marginBottom = '5px';
+skalaPrioritasHeader.style.paddingLeft = '12px';  // Add left padding to align with other content
+document.getElementById("menu").appendChild(skalaPrioritasHeader);
+
+// Create Skala Prioritas label
 var lab_SkalaPrioritas = document.createElement('div');
 lab_SkalaPrioritas.innerHTML  = 'Skala Prioritas: <span id="val_SkalaPrioritas"></span>';
 lab_SkalaPrioritas.className = 'filterlabel';
-document.getElementById("menu").appendChild(lab_SkalaPrioritas);
+skalaPrioritasHeader.appendChild(lab_SkalaPrioritas);
 
+// Create clear filter link
 var reset_SkalaPrioritas = document.createElement('div');
 reset_SkalaPrioritas.innerHTML = 'clear filter';
 reset_SkalaPrioritas.className = 'filterlabel';
+reset_SkalaPrioritas.style.cursor = 'pointer';
+reset_SkalaPrioritas.style.color = '#0066cc';
 reset_SkalaPrioritas.onclick = function() {
     sel_SkalaPrioritas.noUiSlider.reset();
 };
-document.getElementById("menu").appendChild(reset_SkalaPrioritas);
+skalaPrioritasHeader.appendChild(reset_SkalaPrioritas);
+
+// Create the slider
+var div_SkalaPrioritas = document.createElement("div");
+div_SkalaPrioritas.id = "div_SkalaPrioritas";
+div_SkalaPrioritas.className = "slider";
+div_SkalaPrioritas.style.marginTop = '5px';  // Space after the header
+div_SkalaPrioritas.style.marginBottom = '30px';  // Add more space before the next section
+div_SkalaPrioritas.style.padding = '0 8px 0 8px';  // Add padding to prevent overlap with sidebar edges
+div_SkalaPrioritas.style.boxSizing = 'border-box';  // Ensure padding is included in width
+document.getElementById("menu").appendChild(div_SkalaPrioritas);
+
+// Create Status Progress filter container
+document.getElementById("menu").appendChild(document.createElement("div"));
+
+// Create a container for Status Progress label and clear filter
+var statusProgressHeader = document.createElement('div');
+statusProgressHeader.style.display = 'flex';
+statusProgressHeader.style.justifyContent = 'space-between';
+statusProgressHeader.style.alignItems = 'center';
+statusProgressHeader.style.marginBottom = '5px';
+statusProgressHeader.style.paddingLeft = '12px';  // Add left padding to align with other content
+document.getElementById("menu").appendChild(statusProgressHeader);
+
+var lab_StatusProgress = document.createElement('div');
+lab_StatusProgress.innerHTML = 'Status Progress: <span id="val_StatusProgress"></span>';
+lab_StatusProgress.className = 'filterlabel';
+statusProgressHeader.appendChild(lab_StatusProgress);
+
+var reset_StatusProgress = document.createElement('div');
+reset_StatusProgress.innerHTML = 'clear filter';
+reset_StatusProgress.className = 'filterlabel';
+reset_StatusProgress.style.cursor = 'pointer';
+reset_StatusProgress.style.color = '#0066cc';
+reset_StatusProgress.onclick = function() {
+    var options = document.getElementById('sel_StatusProgress').options;
+    for (var i = 0; i < options.length; i++) {
+        options[i].selected = false;
+    }
+    document.getElementById('val_StatusProgress').textContent = '';
+    filterFunc();
+};
+statusProgressHeader.appendChild(reset_StatusProgress);
+
+var sel_StatusProgress = document.createElement('select');
+sel_StatusProgress.id = 'sel_StatusProgress';
+sel_StatusProgress.className = 'filterselect';
+sel_StatusProgress.multiple = true;
+sel_StatusProgress.size = 4;
+sel_StatusProgress.style.marginBottom = '15px';
+sel_StatusProgress.onchange = function() {
+    updateStatusProgressLabel();
+    filterFunc();
+};
+
+// Add options
+var optionDitunda = document.createElement('option');
+optionDitunda.value = 'Ditunda';
+optionDitunda.text = 'Ditunda';
+sel_StatusProgress.appendChild(optionDitunda);
+
+var optionLaporanDiterima = document.createElement('option');
+optionLaporanDiterima.value = 'Laporan Diterima';
+optionLaporanDiterima.text = 'Laporan Diterima';
+sel_StatusProgress.appendChild(optionLaporanDiterima);
+
+var optionDalamPengerjaan = document.createElement('option');
+optionDalamPengerjaan.value = 'Dalam Pengerjaan';
+optionDalamPengerjaan.text = 'Dalam Pengerjaan';
+sel_StatusProgress.appendChild(optionDalamPengerjaan);
+
+var optionSelesai = document.createElement('option');
+optionSelesai.value = 'Selesai';
+optionSelesai.text = 'Selesai';
+sel_StatusProgress.appendChild(optionSelesai);
+
+// Add left padding to the Status Progress dropdown
+sel_StatusProgress.style.marginLeft = '12px';
+document.getElementById("menu").appendChild(sel_StatusProgress);
 
 // Create search section
 var searchSection = document.createElement('div');
@@ -918,6 +1060,19 @@ sel_SkalaPrioritas.noUiSlider.on('update', function (values) {
     filterFunc()
 });
 
+// Function to update Status Progress label with selected values
+function updateStatusProgressLabel() {
+    var options = document.getElementById('sel_StatusProgress').options;
+    var selectedValues = [];
+    for (var i = 0; i < options.length; i++) {
+        if (options[i].selected) {
+            selectedValues.push(options[i].text);
+        }
+    }
+    var val_StatusProgress = document.getElementById('val_StatusProgress');
+    val_StatusProgress.innerHTML = selectedValues.length > 0 ? selectedValues.join(', ') : '';
+}
+
 // Add search functionality
 document.getElementById('searchButton').addEventListener('click', function() {
     searchSubmissionId();
@@ -948,24 +1103,45 @@ function searchSubmissionId() {
     }
     
     var found = false;
-    json_Form_Pengaduan_Jalan_Rusak_3.features.forEach(function(feature, index) {
-        if (feature.properties['Submission ID'] && feature.properties['Submission ID'].toString().trim() === searchId) {
-            // Zoom to the feature
-            var latlng = L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
-            map.setView(latlng, 18); // Zoom level 18 for close view
-            
-            // Find the layer and open popup
-            layer_Form_Pengaduan_Jalan_Rusak_3.eachLayer(function(layer) {
-                if (layer.feature === feature) {
-                    layer.openPopup();
-                }
-            });
-            
+    var foundFeature = null;
+    
+    // First pass: Find the feature with matching Submission ID
+    json_Form_Pengaduan_Jalan_Rusak_3.features.forEach(function(feature) {
+        if (feature.properties['Submission ID'] && 
+            feature.properties['Submission ID'].toString().trim() === searchId) {
+            foundFeature = feature;
             found = true;
-            messageDiv.style.display = 'none';
-            return;
         }
     });
+    
+    if (found && foundFeature) {
+        // If the found feature is 'Selesai', make sure it's visible
+        if (foundFeature.properties['Status Progress'] === 'Selesai') {
+            // Select 'Selesai' in the filter
+            var statusSelect = document.getElementById('sel_StatusProgress');
+            var selesaiOption = Array.from(statusSelect.options).find(opt => opt.value === 'Selesai');
+            if (selesaiOption) {
+                selesaiOption.selected = true;
+                updateStatusProgressLabel();
+            }
+        }
+        
+        // Apply filters and then zoom/select the feature
+        filterFunc();
+        
+        // Zoom to the feature
+        var latlng = L.latLng(foundFeature.geometry.coordinates[1], foundFeature.geometry.coordinates[0]);
+        map.setView(latlng, 18); // Zoom level 18 for close view
+        
+        // Find the layer and open popup
+        layer_Form_Pengaduan_Jalan_Rusak_3.eachLayer(function(layer) {
+            if (layer.feature === foundFeature) {
+                layer.openPopup();
+            }
+        });
+        
+        messageDiv.style.display = 'none';
+    }
     
     if (!found) {
         messageDiv.style.display = 'block';
