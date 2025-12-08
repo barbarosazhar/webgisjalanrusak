@@ -363,6 +363,7 @@ async function myFunction(results) {
                     'Alasan Urgensi': row['Alasan Urgensi'] || '',
                     'Alasan Tertunda': row['Alasan Tertunda'] || '',
                     'Kebutuhan Alat Berat': row['Kebutuhan Alat Berat'] || '',
+                    'Alat Berat Yang Dikirim': row['Alat Berat Yang Dikirim'] || '',
                     'Koordinat X (Longitude)': row['Koordinat X (Longitude)'] || coords.lon.toFixed(6),
                     'Koordinat Y (Latitude)': row['Koordinat Y (Latitude)'] || coords.lat.toFixed(6),
                     'Koordinat Jalan Rusak': locationName, // Reverse geocoded location name
@@ -413,7 +414,7 @@ map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2we
 var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
 
 // remove popup's row if "visible-with-data"
-function removeEmptyRowsFromPopupContent(content, feature) {
+function rw6jYohNVBeVZFxAjEUHqSbjor6i8pNm4h(content, feature) {
  var tempDiv = document.createElement('div');
  tempDiv.innerHTML = content;
  var rows = tempDiv.querySelectorAll('tr');
@@ -604,6 +605,10 @@ function pop_Form_Pengaduan_Jalan_Rusak_3(feature, layer) {
                 <td class="visible-with-data" id="Kebutuhan Alat Berat">' + (feature.properties['Kebutuhan Alat Berat'] !== null ? formatFieldValue(feature.properties['Kebutuhan Alat Berat']) : '') + '</td>\
             </tr>\
             <tr>\
+                <th scope="row">Alat Berat Yang Dikirim</th>\
+                <td id="Alat Berat Yang Dikirim">' + ((feature.properties['Alat Berat Yang Dikirim'] === null || feature.properties['Alat Berat Yang Dikirim'] === '') ? '<span style="color: #0a53a8;">Alat Berat akan Segera Ditugaskan</span>' : formatFieldValue(feature.properties['Alat Berat Yang Dikirim'])) + '</td>\
+            </tr>\
+            <tr>\
                 <th scope="row">Koordinat Jalan Rusak</th>\
                 <td class="visible-with-data" id="Koordinat Jalan Rusak">' + (feature.properties['Koordinat Jalan Rusak'] !== null ? formatFieldValue(feature.properties['Koordinat Jalan Rusak']) : '') + '</td>\
             </tr>\
@@ -628,7 +633,7 @@ function pop_Form_Pengaduan_Jalan_Rusak_3(feature, layer) {
                 <td style="color: #b10202;">' + formatFieldValue(feature.properties['Alasan Tertunda']) + '</td>\
             </tr>' : '') +
         '</table>';
-    var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+    var content = rw6jYohNVBeVZFxAjEUHqSbjor6i8pNm4h(popupContent, feature);
     layer.on('popupopen', function(e) {
         addClassToPopupIfMedia(content, e.popup);
     });
