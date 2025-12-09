@@ -214,8 +214,8 @@ function parseCoordinate(coordString, type) {
  * @returns {Object|null} - {lat, lon} or null
  */
 function extractValidCoordinates(row) {
-    const lonString = row['Koordinat X (Longitude)'];
-    const latString = row['Koordinat Y (Latitude)'];
+    const lonString = row['Koordinat X (Longitude/Bujur)'];
+    const latString = row['Koordinat Y (Latitude/Lintang)'];
     
     const lon = parseCoordinate(lonString, 'longitude');
     const lat = parseCoordinate(latString, 'latitude');
@@ -364,8 +364,8 @@ async function myFunction(results) {
                     'Alasan Tertunda': row['Alasan Tertunda'] || '',
                     'Kebutuhan Alat Berat': row['Kebutuhan Alat Berat'] || '',
                     'Alat Berat Yang Dikirim': row['Alat Berat Yang Dikirim'] || '',
-                    'Koordinat X (Longitude)': row['Koordinat X (Longitude)'] || coords.lon.toFixed(6),
-                    'Koordinat Y (Latitude)': row['Koordinat Y (Latitude)'] || coords.lat.toFixed(6),
+                    'Koordinat X (Longitude/Bujur)': row['Koordinat X (Longitude/Bujur)'] || coords.lon.toFixed(6),
+                    'Koordinat Y (Latitude/Lintang)': row['Koordinat Y (Latitude/Lintang)'] || coords.lat.toFixed(6),
                     'Koordinat Jalan Rusak': locationName, // Reverse geocoded location name
                     'Dokumentasi Jalan Rusak': row['Dokumentasi Jalan Rusak'] || ''
                 }
@@ -564,8 +564,8 @@ function pop_Form_Pengaduan_Jalan_Rusak_3(feature, layer) {
     }
     
     // Parse and extract valid coordinates
-    var rawLon = feature.properties['Koordinat X (Longitude)'];
-    var rawLat = feature.properties['Koordinat Y (Latitude)'];
+    var rawLon = feature.properties['Koordinat X (Longitude/Bujur)'];
+    var rawLat = feature.properties['Koordinat Y (Latitude/Lintang)'];
 
     // Use parseCoordinate (supports DMS & cardinal) to try get decimal values
     var parsedLon = parseCoordinate(String(rawLon || ''), 'longitude');
@@ -613,12 +613,12 @@ function pop_Form_Pengaduan_Jalan_Rusak_3(feature, layer) {
                 <td class="visible-with-data" id="Koordinat Jalan Rusak">' + (feature.properties['Koordinat Jalan Rusak'] !== null ? formatFieldValue(feature.properties['Koordinat Jalan Rusak']) : '') + '</td>\
             </tr>\
             <tr>\
-                <th scope="row">Koordinat X (Longitude)</th>\
-                <td class="visible-with-data" id="Koordinat X (Longitude)">' + (displayLonDMS ? formatFieldValue(displayLonDMS) : '') + '</td>\
+                <th scope="row">Koordinat X (Longitude/Bujur)</th>\
+                <td class="visible-with-data" id="Koordinat X (Longitude/Bujur)">' + (displayLonDMS ? formatFieldValue(displayLonDMS) : '') + '</td>\
             </tr>\
             <tr>\
-                <th scope="row">Koordinat Y (Latitude)</th>\
-                <td class="visible-with-data" id="Koordinat Y (Latitude)">' + (displayLatDMS ? formatFieldValue(displayLatDMS) : '') + '</td>\
+                <th scope="row">Koordinat Y (Latitude/Lintang)</th>\
+                <td class="visible-with-data" id="Koordinat Y (Latitude/Lintang)">' + (displayLatDMS ? formatFieldValue(displayLatDMS) : '') + '</td>\
             </tr>\
             <tr>\
                 <th scope="row">Dokumentasi Jalan Rusak</th>\
