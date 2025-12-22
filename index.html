@@ -792,7 +792,15 @@ splitter.id = "splitter";
 var col2 = document.createElement('div');
 col2.className="col3";
 col2.id = "menu";
-col2.style.flex = "0 0 20%";
+
+// Set responsive flex sizes for mobile and desktop
+var isMobileView = window.innerWidth <= 768;
+if (isMobileView) {
+    col2.style.flex = "0 0 50%"; // 50% width on mobile for better visibility
+} else {
+    col2.style.flex = "0 0 20%"; // 20% width on desktop
+}
+
 mapDiv.parentNode.insertBefore(row, mapDiv);
 document.getElementById("all").appendChild(col1);
 document.getElementById("all").appendChild(splitter);
@@ -1206,6 +1214,21 @@ document.addEventListener('mouseup', stopResize);
 splitter.addEventListener('touchstart', startResize, { passive: false });
 document.addEventListener('touchmove', doResize, { passive: false });
 document.addEventListener('touchend', stopResize);
+
+// Handle window resize to adjust panel layout for mobile/desktop
+window.addEventListener('resize', function() {
+    var menu = document.getElementById('menu');
+    if (menu && menu.style.flex && menu.style.flex.indexOf('px') === -1) {
+        // Only update if flex is in percentage form (not pixels from user resize)
+        var isMobileView = window.innerWidth <= 768;
+        if (isMobileView) {
+            menu.style.flex = "0 0 50%"; // 50% width on mobile
+        } else {
+            menu.style.flex = "0 0 20%"; // 20% width on desktop
+        }
+        if (map) map.invalidateSize();
+    }
+});
         </script>
     </body>
 </html>
