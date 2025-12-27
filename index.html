@@ -1067,9 +1067,21 @@ noUiSlider.create(sel_SkalaPrioritas, {
     }
 });
 
+// Mapping for Skala Prioritas descriptions
+var skalaPrioritasMap = {
+    '1': '1 (Tidak Mendesak)',
+    '2': '2',
+    '3': '3',
+    '4': '4',
+    '5': '5 (Darurat)'
+};
+
 sel_SkalaPrioritas.noUiSlider.on('update', function (values) {
     val_SkalaPrioritas = document.getElementById('val_SkalaPrioritas');
-    val_SkalaPrioritas.innerHTML = values.join(' - ');
+    var formattedValues = values.map(function(val) {
+        return skalaPrioritasMap[val] || val;
+    });
+    val_SkalaPrioritas.innerHTML = formattedValues.join(' - ');
     filterFunc()
 });
 
