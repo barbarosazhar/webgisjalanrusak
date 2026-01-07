@@ -819,7 +819,7 @@ col2.innerHTML = '<div style="padding:12px;font-family:Arial, sans-serif;color:#
     <h3>Peta Kerusakan Jalan</h3>\
 </div>';
 
-var Filters = {"Skala Prioritas": "int", "Status Progress": "str"};
+var Filters = {"Skala Prioritas": "str", "Status Progress": "str"};
 
 /**
  * Function to filter layer features based on user selection.
@@ -941,19 +941,46 @@ reset_SkalaPrioritas.className = 'filterlabel';
 reset_SkalaPrioritas.style.cursor = 'pointer';
 reset_SkalaPrioritas.style.color = '#0066cc';
 reset_SkalaPrioritas.onclick = function() {
-    sel_SkalaPrioritas.noUiSlider.reset();
+    var options = document.getElementById('sel_SkalaPrioritas').options;
+    for (var i = 0; i < options.length; i++) {
+        options[i].selected = false;
+    }
+    document.getElementById('val_SkalaPrioritas').textContent = '';
+    filterFunc();
 };
 skalaPrioritasHeader.appendChild(reset_SkalaPrioritas);
 
-// Create the slider
-var div_SkalaPrioritas = document.createElement("div");
-div_SkalaPrioritas.id = "div_SkalaPrioritas";
-div_SkalaPrioritas.className = "slider";
-div_SkalaPrioritas.style.marginTop = '5px';  // Space after the header
-div_SkalaPrioritas.style.marginBottom = '30px';  // Add more space before the next section
-div_SkalaPrioritas.style.padding = '0 8px 0 8px';  // Add padding to prevent overlap with sidebar edges
-div_SkalaPrioritas.style.boxSizing = 'border-box';  // Ensure padding is included in width
-document.getElementById("menu").appendChild(div_SkalaPrioritas);
+// Create Skala Prioritas select dropdown
+var sel_SkalaPrioritas = document.createElement('select');
+sel_SkalaPrioritas.id = 'sel_SkalaPrioritas';
+sel_SkalaPrioritas.className = 'filterselect';
+sel_SkalaPrioritas.multiple = true;
+sel_SkalaPrioritas.size = 3;
+sel_SkalaPrioritas.style.marginBottom = '15px';
+sel_SkalaPrioritas.onchange = function() {
+    updateSkalaPrioritasLabel();
+    filterFunc();
+};
+
+// Add options for Skala Prioritas
+var optionRendah = document.createElement('option');
+optionRendah.value = 'Rendah';
+optionRendah.text = 'Rendah';
+sel_SkalaPrioritas.appendChild(optionRendah);
+
+var optionMenengah = document.createElement('option');
+optionMenengah.value = 'Menengah';
+optionMenengah.text = 'Menengah';
+sel_SkalaPrioritas.appendChild(optionMenengah);
+
+var optionTinggi = document.createElement('option');
+optionTinggi.value = 'Tinggi';
+optionTinggi.text = 'Tinggi';
+sel_SkalaPrioritas.appendChild(optionTinggi);
+
+// Add left padding to the Skala Prioritas dropdown
+sel_SkalaPrioritas.style.marginLeft = '12px';
+document.getElementById("menu").appendChild(sel_SkalaPrioritas);
 
 // Create Status Progress filter container
 document.getElementById("menu").appendChild(document.createElement("div"));
@@ -1052,38 +1079,18 @@ feedbackSection.innerHTML = '\
 ';
 document.getElementById("menu").appendChild(feedbackSection);
 
-// Initialize slider
-var sel_SkalaPrioritas = document.getElementById('div_SkalaPrioritas');
-noUiSlider.create(sel_SkalaPrioritas, {
-    connect: true,
-    start: [1, 5],
-    step: 1,
-    format: wNumb({
-        decimals: 0,
-    }),
-    range: {
-    min: 1,
-    max: 5
+// Function to update Skala Prioritas label with selected values
+function updateSkalaPrioritasLabel() {
+    var options = document.getElementById('sel_SkalaPrioritas').options;
+    var selectedValues = [];
+    for (var i = 0; i < options.length; i++) {
+        if (options[i].selected) {
+            selectedValues.push(options[i].text);
+        }
     }
-});
-
-// Mapping for Skala Prioritas descriptions
-var skalaPrioritasMap = {
-    '1': '1 (Tidak Mendesak)',
-    '2': '2',
-    '3': '3',
-    '4': '4',
-    '5': '5 (Darurat)'
-};
-
-sel_SkalaPrioritas.noUiSlider.on('update', function (values) {
-    val_SkalaPrioritas = document.getElementById('val_SkalaPrioritas');
-    var formattedValues = values.map(function(val) {
-        return skalaPrioritasMap[val] || val;
-    });
-    val_SkalaPrioritas.innerHTML = formattedValues.join(' - ');
-    filterFunc()
-});
+    var val_SkalaPrioritas = document.getElementById('val_SkalaPrioritas');
+    val_SkalaPrioritas.innerHTML = selectedValues.length > 0 ? selectedValues.join(', ') : '';
+}
 
 // Function to update Status Progress label with selected values
 function updateStatusProgressLabel() {
