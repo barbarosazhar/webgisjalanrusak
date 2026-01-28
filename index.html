@@ -307,7 +307,7 @@ async function getLocationName(row) {
 
 // Fetch Google Sheets data using Papa Parse
 function init() {
-    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQAcHzBsovW-FFQpcikrjdg9RNxDKaE3MTB0CkBgJVsj6aYzMuExNJB77sRIDKztKVPRtE1MoidxVX-/pub?output=csv';
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQAcHzBsovW-FFQpcikrjdg9RNxDKaE3MTB0CkBgJVsj6aYzMuExNJB77sRIDKztKVPRtE1MoidxVX-/pub?gid=303479582&single=true&output=csv';
     
     Papa.parse(csvUrl, {
         download: true,
