@@ -1,40 +1,64 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web GIS Jalan Rusak</title>
-    <script src="app.js" defer></script>
-</head>
-<body>
-    <h1>Welcome to Web GIS Jalan Rusak</h1>
-    <div id="map"></div>
+    <title>Web GIS</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY"></script>
     <script>
-        // Call init() to start data fetching
-        async function init() {
-            try {
-                const data = await fetchData();
-                renderMap(data);
-            } catch (error) {
-                console.error('Error fetching data:', error);
-            }
+        // Map initialization
+        let map;
+        function init() {
+            const mapOptions = {
+                center: new google.maps.LatLng(-7.295680, 112.735243),
+                zoom: 8,
+                mapTypeId: google.maps.MapTypeId.ROADMAP
+            };
+            map = new google.maps.Map(document.getElementById('map'), mapOptions);
+            fetchMapPoints();
         }
 
-        async function fetchData() {
-            // Optimized data fetching logic
-            const response = await fetch('/api/data');
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return await response.json();
+        // Fetch map points from Google Sheets
+        function fetchMapPoints() {
+            const sheetUrl = 'YOUR_SHEET_URL';
+            fetch(sheetUrl)
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(point => {
+                        const latLng = new google.maps.LatLng(point.latitude, point.longitude);
+                        new google.maps.Marker({
+                            position: latLng,
+                            map: map
+                        });
+                    });
+                });
         }
 
-        function renderMap(data) {
-            // Logic to render the map using fetched data
+        // Coordinate validation
+        function validateCoordinates(latitude, longitude) {
+            // Validation logic here
+            return true;
         }
 
-        // Call init function when the script is loaded
-        init();
+        // Reverse geocoding
+        function getAddress(lat, lng) {
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({'location': {lat: lat, lng: lng}}, (results, status) => {
+                if (status === 'OK' && results[0]) {
+                    console.log(results[0].formatted_address);
+                }
+            });
+        }
+
+        // Layer management
+        function manageLayers() {
+            // Layer management code here
+        }
     </script>
+</head>
+<body onload="init()">
+    <div id="map" style="height: 500px; width: 100%;"></div>
 </body>
 </html>
+
+<script>
+init();
+</script>
