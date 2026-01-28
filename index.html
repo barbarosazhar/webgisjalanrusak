@@ -79,7 +79,7 @@ function isValidCoordinate(lat, lon) {
 
 /**
  * Performs reverse geocoding using OpenStreetMap Nominatim API
- * Gets the location name (Koordinat Jalan Rusak) from latitude/longitude
+ * Gets the location name (Geotagging Koordinat Jalan Rusak) from latitude/longitude
  * @param {number} lat - Latitude coordinate
  * @param {number} lon - Longitude coordinate
  * @returns {Promise<string>} - Returns location address/name
@@ -227,7 +227,7 @@ function extractValidCoordinates(row) {
 }
 
 /**
- * Attempts to extract coordinates from "Koordinat Jalan Rusak" field
+ * Attempts to extract coordinates from "Geotagging Koordinat Jalan Rusak" field
  * Supports various formats: "lat,lon" or "lon,lat"
  * @param {string} koordinatText - Text containing coordinates
  * @returns {Object|null} - {lat, lon} or null
@@ -279,9 +279,9 @@ async function getLocationName(row) {
     // First, try to get valid coordinates from primary fields
     let coords = extractValidCoordinates(row);
     
-    // If primary coordinates are invalid, try to parse "Koordinat Jalan Rusak" field
-    if (!coords && row['Koordinat Jalan Rusak']) {
-        coords = parseKordinatJalanRusakField(row['Koordinat Jalan Rusak']);
+    // If primary coordinates are invalid, try to parse "Geotagging Koordinat Jalan Rusak" field
+    if (!coords && row['Geotagging Koordinat Jalan Rusak']) {
+        coords = parseKordinatJalanRusakField(row['Geotagging Koordinat Jalan Rusak']);
     }
     
     // If we have valid coordinates, perform reverse geocoding
@@ -325,7 +325,7 @@ async function myFunction(results) {
     sheetsData = results.data.filter(row => {
         // Include rows that have either primary coordinates or can be parsed
         const hasValidCoords = extractValidCoordinates(row);
-        const hasKordinatField = row['Koordinat Jalan Rusak'];
+        const hasKordinatField = row['Geotagging Koordinat Jalan Rusak'];
         return hasValidCoords || hasKordinatField;
     });
     
@@ -337,8 +337,8 @@ async function myFunction(results) {
         let locationName = '';
         
         // If primary coordinates are invalid, try to parse them
-        if (!coords && row['Koordinat Jalan Rusak']) {
-            coords = parseKordinatJalanRusakField(row['Koordinat Jalan Rusak']);
+        if (!coords && row['Geotagging Koordinat Jalan Rusak']) {
+            coords = parseKordinatJalanRusakField(row['Geotagging Koordinat Jalan Rusak']);
         }
         
         // If we found valid coordinates, perform reverse geocoding to get location name
@@ -366,7 +366,7 @@ async function myFunction(results) {
                     'Alat Berat Yang Dikirim': row['Alat Berat Yang Dikirim'] || '',
                     'Koordinat X (Longitude/Bujur)': row['Koordinat X (Longitude/Bujur)'] || coords.lon.toFixed(6),
                     'Koordinat Y (Latitude/Lintang)': row['Koordinat Y (Latitude/Lintang)'] || coords.lat.toFixed(6),
-                    'Koordinat Jalan Rusak': locationName, // Reverse geocoded location name
+                    'Geotagging Koordinat Jalan Rusak': locationName, // Reverse geocoded location name
                     'Dokumentasi Jalan Rusak': row['Dokumentasi Jalan Rusak'] || ''
                 }
             });
@@ -414,7 +414,7 @@ map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2we
 var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
 
 // remove popup's row if "visible-with-data"
-function rw6jYohNVBeVZFxAjEUHqSbjor6i8pNm4h(content, feature) {
+function rDXRkUc5jzkYt7GjYX2bKR73TdXd1pkAPX(content, feature) {
  var tempDiv = document.createElement('div');
  tempDiv.innerHTML = content;
  var rows = tempDiv.querySelectorAll('tr');
@@ -609,8 +609,8 @@ function pop_Form_Pengaduan_Jalan_Rusak_3(feature, layer) {
                 <td id="Alat Berat Yang Dikirim">' + ((feature.properties['Alat Berat Yang Dikirim'] === null || feature.properties['Alat Berat Yang Dikirim'] === '') ? '<span style="color: #0a53a8;">Alat Berat akan Segera Ditugaskan</span>' : formatFieldValue(feature.properties['Alat Berat Yang Dikirim'])) + '</td>\
             </tr>\
             <tr>\
-                <th scope="row">Koordinat Jalan Rusak</th>\
-                <td class="visible-with-data" id="Koordinat Jalan Rusak">' + (feature.properties['Koordinat Jalan Rusak'] !== null ? formatFieldValue(feature.properties['Koordinat Jalan Rusak']) : '') + '</td>\
+                <th scope="row">Wilayah Administrasi</th>\
+                <td class="visible-with-data" id="Geotagging Koordinat Jalan Rusak">' + (feature.properties['Geotagging Koordinat Jalan Rusak'] !== null ? formatFieldValue(feature.properties['Geotagging Koordinat Jalan Rusak']) : '') + '</td>\
             </tr>\
             <tr>\
                 <th scope="row">Koordinat X (Longitude/Bujur)</th>\
@@ -633,7 +633,7 @@ function pop_Form_Pengaduan_Jalan_Rusak_3(feature, layer) {
                 <td style="color: #b10202;">' + formatFieldValue(feature.properties['Alasan Tertunda']) + '</td>\
             </tr>' : '') +
         '</table>';
-    var content = rw6jYohNVBeVZFxAjEUHqSbjor6i8pNm4h(popupContent, feature);
+    var content = rDXRkUc5jzkYt7GjYX2bKR73TdXd1pkAPX(popupContent, feature);
     layer.on('popupopen', function(e) {
         addClassToPopupIfMedia(content, e.popup);
     });
